@@ -70,30 +70,70 @@ public class BluBcaGrandSystem {
     }
 
     // ==================== JDBC: KONEKSI DATABASE ====================
-    // try-with-resources = auto-close Connection, Statement, ResultSet setelah selesai
-    // PreparedStatement = aman dari SQL Injection (selalu pakai ini, BUKAN Statement biasa)
     private static List<Transaksi> ambilSemuaTransaksi() {
         List<Transaksi> list = new ArrayList<>();
-        String sql = "SELECT id, customer_name, amount, status FROM Blu_transactions";
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
 
-            while (rs.next()) {
-                list.add(new Transaksi(
-                    rs.getInt("id"),
-                    rs.getString("customer_name"),
-                    rs.getDouble("amount"),
-                    rs.getString("status")
-                ));
+            // Auto-create table jika belum ada
+            buatTabelJikaBelumAda(conn);
+
+            String sql = "SELECT id, customer_name, amount, status FROM Blu_transactions";
+            try (PreparedStatement stmt = conn.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
+
+                while (rs.next()) {
+                    list.add(new Transaksi(
+                        rs.getInt("id"),
+                        rs.getString("customer_name"),
+                        rs.getDouble("amount"),
+                        rs.getString("status")
+                    ));
+                }
             }
-            System.out.println("Berhasil terhubung ke PostgreSQL dan mengambil data.\n");
+            System.out.println("Berhasil terhubung ke PostgreSQL.\n");
 
         } catch (SQLException e) {
             System.err.println("Gagal koneksi ke database: " + e.getMessage());
         }
         return list;
+    }
+
+    // Buat tabel + isi data dummy jika belum ada
+    private static void buatTabelJikaBelumAda(Connection conn) throws SQLException {
+        String createTable = """
+            CREATE TABLE IF NOT EXISTS Blu_transactions (
+              id SERIAL PRIMARY KEY,
+              customer_name VARCHAR(100),
+              amount DECIMAL(15, 2),
+              status VARCHAR(20)
+            )
+            """;
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(createTable);
+        }
+
+        // Cek apakah tabel kosong, jika iya isi data seeding
+        String countSql = "SELECT COUNT(*) FROM Blu_transactions";
+        try (PreparedStatement stmt = conn.prepareStatement(countSql);
+             ResultSet rs = stmt.executeQuery()) {
+            rs.next();
+            if (rs.getInt(1) == 0) {
+                String seed = """
+                    INSERT INTO Blu_transactions (customer_name, amount, status) VALUES
+                    ('Budi Utomo', 500000.00, 'SUCCESS'),
+                    ('Siti Aminah', 15000000.00, 'SUCCESS'),
+                    ('Andi Wijaya', 250000.00, 'PENDING'),
+                    ('Rina Lestari', 125000000.00, 'SUCCESS'),
+                    ('Dewi Sartika', 750000.00, 'SUCCESS')
+                    """;
+                try (Statement seedStmt = conn.createStatement()) {
+                    seedStmt.execute(seed);
+                    System.out.println("Tabel Blu_transactions dibuat dan diisi 5 data dummy.");
+                }
+            }
+        }
     }
 
     // ==================== LAMBDA & FUNCTIONAL INTERFACE ====================
