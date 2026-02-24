@@ -1,6 +1,0 @@
-com/Blubca/finance/service/TransaksiService.class
-com/Blubca/finance/domain/Transaksi.class
-com/Blubca/finance/Main.class
-module-info.class
-com/Blubca/finance/repository/TransaksiRepository.class
-com/Blubca/finance/repository/PostgresTransaksiRepository.class
