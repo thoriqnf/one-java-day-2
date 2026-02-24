@@ -1,57 +1,49 @@
 # BluBCA Digital Transaction Monitor
 
-Proyek Java JPMS (Java Platform Module System) dengan konsep **Functional Interface, Lambda, dan Stream API**.
+## Apa itu Functional Interface, Lambda & Stream?
 
-## Prasyarat
+**Functional Interface** adalah kontrak yang hanya punya *satu* method. Bayangkan seperti stempel keputusan: "Transaksi ini lolos atau tidak?" — caranya bebas, yang penting jawabannya `true`/`false`.
 
-- **Java 17** (JDK 17 atau lebih baru)
-- **Apache Maven** (3.8+)
+**Lambda** `(input) -> logika` adalah cara singkat untuk mengisi kontrak itu tanpa bikin class baru. Seperti menulis jawaban langsung di kertas ujian, tanpa perlu bikin buku baru.
 
-## 1. Kompilasi
+**Stream API** adalah conveyor belt: data masuk → difilter → diproses → dikumpulkan. Tidak perlu loop `for` manual.
+
+## Lihat di Kode
+
+| Baris | Apa yang Terjadi |
+|-------|-----------------|
+| 11-12 | `BluTransactionRule` — kontrak 1 fungsi: terima amount, return boolean |
+| 34-35 | `isHighValue` — implementasi kontrak pakai lambda, transaksi > 10 juta |
+| 38-39 | `isMicroTransaction` — kontrak **yang sama**, aturan berbeda (< 300 ribu) |
+| 44-46 | Stream pipeline: `.stream()` → `.filter()` → `.collect()` |
+| 57-58 | `.reduce()` — jumlahkan semua BigDecimal jadi satu total |
+
+## Contoh Output
+
+```
+=== BluBCA Digital Transaction Monitor ===
+Status: Mengaktifkan filter keamanan...
+
+Transaksi butuh review Manajemen (> 10 Juta):
+>> Flagged: Rp 15000000
+>> Flagged: Rp 125000000
+
+Total Dana High Value: Rp 140000000
+
+Transaksi Mikro (< 300 Ribu):
+>> Micro: Rp 250000
+----------------------------------------------
+```
+
+## 💡 Coba Sendiri
+
+1. Ubah limit high value jadi 5 juta — apa yang berubah?
+2. Tambah transaksi baru `new BigDecimal("999999999")` ke list
+3. Buat aturan ketiga: `isMediumValue` untuk transaksi antara 1-10 juta
+
+## Cara Menjalankan
 
 ```bash
 mvn clean compile
-```
-
-## 2. Menjalankan
-
-```bash
 mvn exec:java -Dexec.mainClass="com.Blubca.finance.BluBcaGrandSystem"
 ```
-
-## 3. (Opsional) Setup Database PostgreSQL
-
-Jika ingin menggunakan database:
-
-```bash
-psql -U postgres -c "CREATE DATABASE blu_db;"
-psql -U postgres -d blu_db -f init.sql
-```
-
-## Struktur Proyek
-
-```
-1-TransactionMonitor/
-├── pom.xml
-├── init.sql
-├── README.md
-└── src/
-    └── main/
-        └── java/
-            ├── module-info.java
-            └── com/
-                └── Blubca/
-                    └── finance/
-                        └── BluBcaGrandSystem.java
-```
-
-## Konsep yang Dibahas
-
-| No | Konsep               | Deskripsi                                                       |
-|----|----------------------|-----------------------------------------------------------------|
-| 1  | Functional Interface | `BluTransactionRule` — kontrak aturan transaksi custom          |
-| 2  | Lambda               | Implementasi `isHighValue` dengan lambda expression             |
-| 3  | Stream API           | `filter`, `collect`, `forEach` untuk memproses transaksi        |
-| 4  | Reduce               | `BigDecimal.ZERO` + `BigDecimal::add` untuk aggregation         |
-| 5  | Method Reference     | `isHighValue::test`, `BigDecimal::add`                          |
-| 6  | JPMS                 | `module-info.java` dengan `requires` dan `exports`              |

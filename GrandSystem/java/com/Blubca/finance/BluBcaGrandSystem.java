@@ -8,9 +8,10 @@ import java.util.function.*;
 import java.util.stream.*;
 
 /**
- * BluBcaGrandSystem — Kasus untuk menggabungkan semua konsep:
- * Dasar Functional, Lambda, Stream, Concurrency, Atomic, dan Parallel
- * ke dalam arsitektur JPMS dan integrasi PostgreSQL.
+ * BluBcaGrandSystem — "Final Boss": Menggabungkan semua konsep dari Demo 1-6
+ * ke dalam satu program yang terhubung ke database PostgreSQL.
+ *
+ * Konsep: Lambda, Stream, Parallel, Concurrency, Atomic, JDBC, Record, JPMS.
  */
 public class BluBcaGrandSystem {
 
@@ -20,11 +21,14 @@ public class BluBcaGrandSystem {
     private static final String DB_PASSWORD = "postgres";
 
     // ==================== ATOMIC VARIABLES ====================
-    // Menggunakan Atomic untuk thread-safe counter
+    // Atomic = thread-safe counter (lihat Demo 5 untuk penjelasan lengkap)
     private static final AtomicInteger totalTransaksiDiproses = new AtomicInteger(0);
     private static final AtomicLong totalNominalDiproses = new AtomicLong(0);
 
-    // ==================== RECORD UNTUK DATA TRANSAKSI ====================
+    // ==================== RECORD ====================
+    // Record = cara modern Java untuk bikin "data class"
+    // Otomatis punya: constructor, getter (id(), customerName(), dll), toString(), equals()
+    // Tanpa record, kamu harus tulis 30+ baris boilerplate!
     record Transaksi(int id, String customerName, double amount, String status) {}
 
     // ==================== MAIN METHOD ====================
@@ -34,7 +38,7 @@ public class BluBcaGrandSystem {
         System.out.println("   JPMS + Functional + Stream + Concurrency");
         System.out.println("==============================================\n");
 
-        // 1. Ambil data dari PostgreSQL
+        // 1. Ambil data dari PostgreSQL (lihat method di bawah)
         List<Transaksi> transaksiList = ambilSemuaTransaksi();
 
         if (transaksiList.isEmpty()) {
@@ -44,23 +48,19 @@ public class BluBcaGrandSystem {
 
         System.out.println("Total transaksi dari database: " + transaksiList.size() + "\n");
 
-        // 2. LAMBDA & FUNCTIONAL INTERFACE
+        // 2-6: Jalankan setiap demo section
         System.out.println("========== LAMBDA & FUNCTIONAL INTERFACE ==========");
         demoLambdaFunctional(transaksiList);
 
-        // 3. STREAM API
         System.out.println("\n========== STREAM API ==========");
         demoStreamAPI(transaksiList);
 
-        // 4. PARALLEL STREAM
         System.out.println("\n========== PARALLEL STREAM ==========");
         demoParallelStream(transaksiList);
 
-        // 5. CONCURRENCY (ExecutorService)
         System.out.println("\n========== CONCURRENCY (ExecutorService) ==========");
         demoConcurrency(transaksiList);
 
-        // 6. ATOMIC VARIABLES
         System.out.println("\n========== ATOMIC VARIABLES ==========");
         demoAtomic(transaksiList);
 
@@ -69,7 +69,9 @@ public class BluBcaGrandSystem {
         System.out.println("==============================================");
     }
 
-    // ==================== 1. KONEKSI DATABASE ====================
+    // ==================== JDBC: KONEKSI DATABASE ====================
+    // try-with-resources = auto-close Connection, Statement, ResultSet setelah selesai
+    // PreparedStatement = aman dari SQL Injection (selalu pakai ini, BUKAN Statement biasa)
     private static List<Transaksi> ambilSemuaTransaksi() {
         List<Transaksi> list = new ArrayList<>();
         String sql = "SELECT id, customer_name, amount, status FROM Blu_transactions";
@@ -94,16 +96,16 @@ public class BluBcaGrandSystem {
         return list;
     }
 
-    // ==================== 2. LAMBDA & FUNCTIONAL ====================
+    // ==================== LAMBDA & FUNCTIONAL INTERFACE ====================
+    // 4 jenis lambda bawaan Java (sama seperti Demo 2):
+    // - Predicate: input → boolean (untuk filter/validasi)
+    // - Function:  input → output  (untuk transformasi)
+    // - Consumer:  input → void    (untuk aksi/cetak)
+    // - Supplier:  ()    → output  (untuk nilai default)
     private static void demoLambdaFunctional(List<Transaksi> list) {
 
-        // Predicate — filter transaksi SUCCESS
         Predicate<Transaksi> isSuccess = t -> t.status().equals("SUCCESS");
-
-        // Function — format nama customer menjadi uppercase
         Function<Transaksi, String> formatNama = t -> t.customerName().toUpperCase();
-
-        // Consumer — cetak informasi transaksi
         Consumer<Transaksi> cetakTransaksi = t ->
             System.out.println("  [" + t.status() + "] " + t.customerName()
                 + " -> Rp " + String.format("%,.2f", t.amount()));
@@ -118,56 +120,56 @@ public class BluBcaGrandSystem {
             .map(formatNama)
             .forEach(nama -> System.out.println("  " + nama));
 
-        // Supplier — memberi pesan default
         Supplier<String> pesanDefault = () -> "Tidak ada transaksi ditemukan";
         Optional<Transaksi> pertama = list.stream().findFirst();
         String namaCustomer = pertama.map(Transaksi::customerName).orElseGet(pesanDefault);
         System.out.println("\nCustomer pertama: " + namaCustomer);
     }
 
-    // ==================== 3. STREAM API ====================
+    // ==================== STREAM API ====================
+    // Stream operations pada data real dari database
+    // sum, average, max = terminal operations (menghasilkan nilai akhir)
+    // groupingBy, toMap = collectors (mengumpulkan ke struktur data baru)
     private static void demoStreamAPI(List<Transaksi> list) {
 
-        // Total amount seluruh transaksi
         double totalAmount = list.stream()
             .mapToDouble(Transaksi::amount)
             .sum();
         System.out.println("Total amount seluruh transaksi: Rp " + String.format("%,.2f", totalAmount));
 
-        // Rata-rata amount
         OptionalDouble rataRata = list.stream()
             .mapToDouble(Transaksi::amount)
             .average();
         rataRata.ifPresent(avg ->
             System.out.println("Rata-rata amount: Rp " + String.format("%,.2f", avg)));
 
-        // Transaksi dengan amount tertinggi
         Optional<Transaksi> maxTransaksi = list.stream()
             .max(Comparator.comparingDouble(Transaksi::amount));
         maxTransaksi.ifPresent(t ->
             System.out.println("Transaksi tertinggi: " + t.customerName()
                 + " -> Rp " + String.format("%,.2f", t.amount())));
 
-        // Grouping berdasarkan status
+        // groupingBy = kelompokkan berdasarkan field tertentu (seperti GROUP BY di SQL)
         Map<String, List<Transaksi>> grouped = list.stream()
             .collect(Collectors.groupingBy(Transaksi::status));
         System.out.println("\nGrouping berdasarkan status:");
         grouped.forEach((status, trans) ->
             System.out.println("  " + status + ": " + trans.size() + " transaksi"));
 
-        // Collecting ke Map: nama -> amount
+        // toMap = buat Map dari stream (key = nama, value = amount)
         Map<String, Double> namaAmount = list.stream()
             .collect(Collectors.toMap(
                 Transaksi::customerName,
                 Transaksi::amount,
-                Double::sum
+                Double::sum  // Jika nama sama, jumlahkan amount-nya
             ));
         System.out.println("\nMapping nama -> amount:");
         namaAmount.forEach((nama, amount) ->
             System.out.println("  " + nama + ": Rp " + String.format("%,.2f", amount)));
     }
 
-    // ==================== 4. PARALLEL STREAM ====================
+    // ==================== PARALLEL STREAM ====================
+    // Sama seperti Demo 6: bandingkan sequential vs parallel pada data real
     private static void demoParallelStream(List<Transaksi> list) {
 
         long startSequential = System.nanoTime();
@@ -187,7 +189,6 @@ public class BluBcaGrandSystem {
         System.out.println("Parallel sum:   Rp " + String.format("%,.2f", totalParallel)
             + " (waktu: " + (endParallel - startParallel) + " ns)");
 
-        // Parallel filter + collect
         List<String> namaSuccess = list.parallelStream()
             .filter(t -> t.status().equals("SUCCESS"))
             .map(Transaksi::customerName)
@@ -195,16 +196,18 @@ public class BluBcaGrandSystem {
         System.out.println("Nama customer SUCCESS (parallel): " + namaSuccess);
     }
 
-    // ==================== 5. CONCURRENCY ====================
+    // ==================== CONCURRENCY ====================
+    // ExecutorService + Future: jalankan beberapa tugas secara bersamaan
+    // Future<T> = "janji" bahwa hasilnya akan tersedia nanti (async)
+    // .get() = tunggu dan ambil hasilnya (blocking)
     private static void demoConcurrency(List<Transaksi> list) {
         ExecutorService executor = Executors.newFixedThreadPool(3);
 
-        // Task 1: Hitung total transaksi SUCCESS
+        // 3 tugas berjalan bersamaan di 3 thread berbeda
         Future<Long> futureCountSuccess = executor.submit(() ->
             list.stream().filter(t -> t.status().equals("SUCCESS")).count()
         );
 
-        // Task 2: Hitung total amount PENDING
         Future<Double> futureTotalPending = executor.submit(() ->
             list.stream()
                 .filter(t -> t.status().equals("PENDING"))
@@ -212,7 +215,6 @@ public class BluBcaGrandSystem {
                 .sum()
         );
 
-        // Task 3: Ambil nama customer dengan amount tertinggi
         Future<String> futureTopCustomer = executor.submit(() ->
             list.stream()
                 .max(Comparator.comparingDouble(Transaksi::amount))
@@ -221,6 +223,7 @@ public class BluBcaGrandSystem {
         );
 
         try {
+            // .get() menunggu hasil dari setiap Future
             System.out.println("Jumlah transaksi SUCCESS: " + futureCountSuccess.get());
             System.out.println("Total amount PENDING: Rp " + String.format("%,.2f", futureTotalPending.get()));
             System.out.println("Customer dengan amount tertinggi: " + futureTopCustomer.get());
@@ -231,13 +234,13 @@ public class BluBcaGrandSystem {
         }
     }
 
-    // ==================== 6. ATOMIC ====================
+    // ==================== ATOMIC ====================
+    // Sama seperti Demo 5: operasi thread-safe tanpa synchronized
+    // parallelStream + atomic = pemrosesan parallel yang aman
     private static void demoAtomic(List<Transaksi> list) {
-        // Reset counter
         totalTransaksiDiproses.set(0);
         totalNominalDiproses.set(0);
 
-        // Simulasi pemrosesan concurrent menggunakan parallelStream + atomic
         list.parallelStream().forEach(t -> {
             totalTransaksiDiproses.incrementAndGet();
             totalNominalDiproses.addAndGet((long) t.amount());
@@ -246,7 +249,8 @@ public class BluBcaGrandSystem {
         System.out.println("Total transaksi diproses (Atomic): " + totalTransaksiDiproses.get());
         System.out.println("Total nominal diproses (Atomic): Rp " + String.format("%,.2f", (double) totalNominalDiproses.get()));
 
-        // AtomicReference untuk menyimpan transaksi tertinggi secara thread-safe
+        // AtomicReference = atomic untuk object (bukan hanya angka)
+        // updateAndGet = baca current → bandingkan → tulis yang menang, secara atomic
         AtomicReference<Transaksi> tertinggi = new AtomicReference<>(list.get(0));
         list.parallelStream().forEach(t -> {
             tertinggi.updateAndGet(current ->

@@ -1,78 +1,55 @@
 # BluBCA Grand System
 
-Proyek Java JPMS (Java Platform Module System) dengan integrasi PostgreSQL.  
-Menggabungkan konsep: **Functional, Lambda, Stream, Concurrency, Atomic, dan Parallel**.
+## Apa itu Grand System?
 
-## Prasyarat
+Ini adalah **"final boss"** — menggabungkan SEMUA konsep dari Demo 1-6 dalam satu program yang terhubung ke database PostgreSQL sungguhan.
 
-- **Java 17** (JDK 17 atau lebih baru)
-- **Apache Maven** (3.8+)
-- **PostgreSQL** (versi 12+)
+> ⚠️ Pastikan kamu sudah paham Demo 1-6 sebelum masuk ke sini!
 
-## 1. Setup Database (PostgreSQL)
+### Konsep yang Digabungkan:
 
-Buat database terlebih dahulu, lalu jalankan script SQL:
+| No | Konsep | Apa yang Dilakukan di Sini |
+|----|--------|--------------------------|
+| 1 | **Lambda** | `Predicate`, `Function`, `Consumer`, `Supplier` untuk proses transaksi |
+| 2 | **Stream API** | `filter`, `map`, `sum`, `average`, `max`, `groupingBy`, `toMap` |
+| 3 | **Parallel Stream** | Perbandingan sequential vs parallel pada data real |
+| 4 | **Concurrency** | `ExecutorService` + `Future` + `Callable` — 3 tugas parallel |
+| 5 | **Atomic** | `AtomicInteger`, `AtomicLong`, `AtomicReference` untuk thread-safe |
+| 6 | **JDBC** | Koneksi PostgreSQL, `PreparedStatement`, `ResultSet` |
+| 7 | **Record** | `record Transaksi(...)` — Java modern untuk data class |
+
+## Lihat di Kode
+
+| Baris | Section |
+|-------|---------|
+| 28 | `record Transaksi` — data class modern (pengganti class + getter) |
+| 73-95 | Koneksi database — `DriverManager`, `PreparedStatement`, `ResultSet` |
+| 98-126 | Lambda demo — `Predicate`, `Function`, `Consumer`, `Supplier` |
+| 129-168 | Stream API — `sum`, `average`, `max`, `groupingBy`, `toMap` |
+| 171-196 | Parallel vs Sequential stream comparison |
+| 199-232 | Concurrency — `Future<>` untuk 3 tugas parallel |
+| 235-259 | Atomic — `AtomicInteger`, `AtomicLong`, `AtomicReference` |
+
+## Setup Database (PostgreSQL)
 
 ```bash
-# Buat database
+# 1. Buat database
 psql -U postgres -c "CREATE DATABASE blu_db;"
 
-# Jalankan init.sql untuk membuat tabel dan memasukkan data
+# 2. Jalankan init.sql
 psql -U postgres -d blu_db -f init.sql
 ```
 
-Script `init.sql` akan:
-- Membuat tabel `Blu_transactions` dengan kolom: `id`, `customer_name`, `amount`, `status`
-- Memasukkan 5 data contoh
-
-## 2. Konfigurasi Koneksi Database
-
-Sesuaikan konfigurasi koneksi di `BluBcaGrandSystem.java` jika diperlukan:
-
+Sesuaikan koneksi di kode jika perlu:
 ```java
 private static final String DB_URL = "jdbc:postgresql://localhost:5432/blu_db";
 private static final String DB_USER = "postgres";
 private static final String DB_PASSWORD = "postgres";
 ```
 
-## 3. Kompilasi
+## Cara Menjalankan
 
 ```bash
 mvn clean compile
-```
-
-## 4. Menjalankan
-
-```bash
 mvn exec:java -Dexec.mainClass="com.Blubca.finance.BluBcaGrandSystem"
 ```
-
-## Struktur Proyek
-
-```
-BluBcaProject/
-├── pom.xml
-├── init.sql
-├── README.md
-└── src/
-    └── main/
-        └── java/
-            ├── module-info.java
-            └── com/
-                └── Blubca/
-                    └── finance/
-                        └── BluBcaGrandSystem.java
-```
-
-## Konsep yang Dibahas
-
-| No | Konsep               | Deskripsi                                                     |
-|----|----------------------|---------------------------------------------------------------|
-| 1  | Lambda               | Predicate, Function, Consumer, Supplier                       |
-| 2  | Functional Interface | Menggunakan built-in functional interfaces dari `java.util.function` |
-| 3  | Stream API           | filter, map, collect, groupingBy, reduce                      |
-| 4  | Parallel Stream      | Perbandingan sequential vs parallel stream                    |
-| 5  | Concurrency          | ExecutorService, Future, Callable                             |
-| 6  | Atomic               | AtomicInteger, AtomicLong, AtomicReference                    |
-| 7  | JPMS                 | module-info.java, requires, exports                           |
-| 8  | PostgreSQL           | JDBC, PreparedStatement, ResultSet                            |

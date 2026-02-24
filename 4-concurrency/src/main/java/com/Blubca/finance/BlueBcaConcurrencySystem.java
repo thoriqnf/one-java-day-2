@@ -5,22 +5,45 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class BlueBcaConcurrencySystem {
-    public static void main(String[] args) {
-        // 1. Membuat Thread Pool dengan 3 "pekerja" tetap
-        // Ini lebih efisien daripada membuat Thread baru untuk setiap tugas
+    public static void main(String[] args) throws InterruptedException {
+
+        System.out.println("=== BlueBCA Notification Center ===\n");
+
+        // ====================================================
+        // STEP 1: Cara Lama — Membuat Thread manual untuk setiap tugas
+        // Masalah: Kalau 1000 tugas, kamu buat 1000 Thread = boros memori!
+        // ====================================================
+        System.out.println("--- Cara Lama (Thread Manual) ---");
+        for (int i = 1; i <= 2; i++) {
+            final int id = i;
+            Thread t = new Thread(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "] Kirim ke Nasabah " + id);
+            });
+            t.start();
+            t.join(); // Tunggu selesai sebelum lanjut
+        }
+
+        Thread.sleep(500); // Jeda agar output tidak tercampur
+        System.out.println();
+
+        // ====================================================
+        // STEP 2: Cara Modern — ExecutorService (Thread Pool)
+        // Bayangkan: 3 teller bank melayani 5 nasabah bergantian.
+        // Teller tidak dipecat setelah 1 nasabah — mereka melayani nasabah berikutnya!
+        // ====================================================
+        System.out.println("--- Cara Modern (Thread Pool: 3 Pekerja) ---");
         ExecutorService adminPool = Executors.newFixedThreadPool(3);
-        System.out.println("=== BlueBCA Notification Center ===");
-        System.out.println("Memulai pengiriman notifikasi massal...\n");
-        // 2. Simulasi 5 tugas pengiriman notifikasi
+
+        // STEP 3: Submit 5 tugas ke pool — hanya 3 yang jalan bersamaan
         for (int i = 1; i <= 5; i++) {
             final int customerId = i;
-            // Mengirim tugas ke dalam pool (menggunakan Lambda)
+            // Lambda sebagai Runnable — tugas yang akan dijalankan oleh pool
             adminPool.submit(() -> {
                 String threadName = Thread.currentThread().getName();
                 System.out.println("[" + threadName + "] Mengirim notifikasi ke Nasabah ID: " + customerId);
 
                 try {
-                    // Simulasi waktu proses pengiriman (1 detik)
+                    // Simulasi waktu proses (1 detik per notifikasi)
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -30,15 +53,12 @@ public class BlueBcaConcurrencySystem {
             });
         }
 
-        // 3. Menutup ExecutorService setelah semua tugas selesai dimasukkan
+        // STEP 4: Tutup pool — tidak menerima tugas baru
         adminPool.shutdown();
 
-        try {
-            // Menunggu maksimal 1 menit sampai semua tugas benar-benar selesai
-            if (!adminPool.awaitTermination(60, TimeUnit.SECONDS)) {
-                adminPool.shutdownNow();
-            }
-        } catch (InterruptedException e) {
+        // STEP 5: Tunggu sampai semua tugas selesai (maks 60 detik)
+        // Jika timeout, paksa hentikan
+        if (!adminPool.awaitTermination(60, TimeUnit.SECONDS)) {
             adminPool.shutdownNow();
         }
 

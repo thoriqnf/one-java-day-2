@@ -1,48 +1,62 @@
 # BluBCA Concurrency Demo
 
-Proyek Java JPMS — Demo **Concurrency** dengan ExecutorService Thread Pool.
+## Apa itu Concurrency & Thread Pool?
 
-## Prasyarat
+**Thread** adalah "pekerja" yang menjalankan tugas. Secara default, Java punya 1 thread (main). Kalau kamu mau kirim 5 notifikasi bersamaan, kamu butuh beberapa pekerja.
 
-- **Java 17** (JDK 17 atau lebih baru)
-- **Apache Maven** (3.8+)
+**Cara lama**: Bikin `new Thread()` untuk setiap tugas. Masalahnya? Kalau 1000 tugas = 1000 Thread baru. Ini seperti **merekrut 1000 karyawan baru** untuk 1000 kerjaan, lalu pecat mereka semua. Boros!
 
-## 1. Kompilasi
+**Cara modern**: Pakai **Thread Pool** (`ExecutorService`). Bayangkan 3 teller bank yang melayani 100 nasabah **bergantian**. Teller tidak dipecat setelah 1 nasabah — mereka langsung ambil nasabah berikutnya dari antrean.
+
+### Alur Thread Pool:
+```
+[Tugas 1] ─┐
+[Tugas 2] ─┤── Antrean ──→ [Pekerja 1] [Pekerja 2] [Pekerja 3]
+[Tugas 3] ─┤                    ↑ ambil tugas baru setelah selesai
+[Tugas 4] ─┤
+[Tugas 5] ─┘
+```
+
+## Lihat di Kode
+
+| Baris | Apa yang Terjadi |
+|-------|-----------------|
+| 17-24 | Cara lama — `new Thread()` untuk setiap tugas (demo 2 nasabah) |
+| 35 | `newFixedThreadPool(3)` — buat pool dengan 3 pekerja tetap |
+| 40-53 | `submit(() -> {...})` — kirim tugas ke pool pakai lambda |
+| 56 | `shutdown()` — tutup pintu masuk, tidak terima tugas baru |
+| 60 | `awaitTermination()` — tunggu semua tugas selesai |
+
+## Contoh Output
+
+```
+=== BlueBCA Notification Center ===
+
+--- Cara Lama (Thread Manual) ---
+[Thread-0] Kirim ke Nasabah 1
+[Thread-1] Kirim ke Nasabah 2
+
+--- Cara Modern (Thread Pool: 3 Pekerja) ---
+[pool-1-thread-1] Mengirim notifikasi ke Nasabah ID: 1
+[pool-1-thread-2] Mengirim notifikasi ke Nasabah ID: 2
+[pool-1-thread-3] Mengirim notifikasi ke Nasabah ID: 3
+[pool-1-thread-1] Selesai mengirim ke Nasabah ID: 1
+[pool-1-thread-1] Mengirim notifikasi ke Nasabah ID: 4
+...
+Status: Semua notifikasi BlueBCA telah diproses.
+```
+
+> Perhatikan: thread-1 sampai thread-3 bergantian — tidak ada thread-4 atau thread-5!
+
+## 💡 Coba Sendiri
+
+1. Ubah pool jadi `newFixedThreadPool(1)` — apa yang terjadi? (semua sequential!)
+2. Ubah jumlah tugas dari 5 jadi 10 — tetap hanya 3 pekerja
+3. Hapus `Thread.sleep(1000)` — perhatikan semua selesai hampir instan
+
+## Cara Menjalankan
 
 ```bash
 mvn clean compile
-```
-
-## 2. Menjalankan
-
-```bash
 mvn exec:java -Dexec.mainClass="com.Blubca.finance.BlueBcaConcurrencySystem"
 ```
-
-## Struktur Proyek
-
-```
-4-concurrency/
-├── pom.xml
-├── README.md
-└── src/
-    └── main/
-        └── java/
-            ├── module-info.java
-            └── com/
-                └── Blubca/
-                    └── finance/
-                        └── BlueBcaConcurrencySystem.java
-```
-
-## Konsep yang Dibahas
-
-| No | Konsep            | Deskripsi                                                           |
-|----|-------------------|---------------------------------------------------------------------|
-| 1  | ExecutorService   | Antarmuka untuk mengelola tugas paralel                             |
-| 2  | Executors         | Kelas pembantu untuk membuat berbagai jenis Thread Pool             |
-| 3  | newFixedThreadPool| 3 "pekerja" tetap — membatasi thread sesuai kapasitas server        |
-| 4  | submit + Lambda   | Mengirim tugas ke pool menggunakan Lambda expression                |
-| 5  | shutdown          | Menutup pool setelah semua tugas selesai dimasukkan                 |
-| 6  | awaitTermination  | Menunggu maksimal 60 detik sampai semua tugas benar-benar selesai   |
-| 7  | TimeUnit          | Mengatur durasi tunggu penutupan pool                               |
